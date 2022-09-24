@@ -14,6 +14,9 @@
 <tr><th>初期seed:<td><input type="text" size="20" name="fseed" value="0x0000010c">
 <tr><th>初期範囲:<td><input type="text" size="6" name="advancement" value="20">
 <tr><th>探すフレーム数:<td><input type="text" size="6" name="frame_length" value="2000">
+<tr><th>タイトル:<td class="title-area">
+<label><input type="radio" name="title" value="spark_and_bomber" checked>スパーク・ボンバー</label>
+<label><input type="radio" name="title" value="ogre">ジ・オーガ</label>
 <tr><th>章:<td class="chapter-area">
 <label><input type="radio" name="chapter" value="5">5章</label>
 <label><input type="radio" name="chapter" value="6">6章</label>
@@ -29,11 +32,44 @@
 <label><input type="radio" name="course" value="3">テクニック</label>
 <label><input type="radio" name="course" value="4">たいりょく</label>
 <label><input type="radio" name="course" value="5">ふしぎ</label>
+<label><input type="radio" name="course" value="6">経験値</label>
+<label><input type="radio" name="course" value="7">スーパー経験値</label>
 <tr><th>欲しいアイテム:<td class="item-area">
 <tr><td><td><input type="submit" value="決定">
 </table>
 </form>
 <div id="search-result"></div>
+
+<h2>マップ作成</h2>
+<form action="" name="map_form" onsubmit="return false;" autocomplete="off">
+<table>
+<tr><th>初期seed:<td><input type="text" size="20" name="fseed" value="0x0000010c">
+<tr><th>消費:<td><input type="text" size="6" name="advancement" value="">
+<tr><th>タイトル:<td class="title-area">
+<label><input type="radio" name="title" value="spark_and_bomber" checked>スパーク・ボンバー</label>
+<label><input type="radio" name="title" value="ogre">ジ・オーガ</label>
+<tr><th>章:<td>
+<label><input type="radio" name="chapter" value="5">5章</label>
+<label><input type="radio" name="chapter" value="6">6章</label>
+<label><input type="radio" name="chapter" value="7">7章</label>
+<label><input type="radio" name="chapter" value="8">8章</label>
+<label><input type="radio" name="chapter" value="9">9章</label>
+<label><input type="radio" name="chapter" value="10">10章</label>
+<label><input type="radio" name="chapter" value="11" checked>クリア後</label>
+<tr><th>コース:<td>
+<label><input type="radio" name="course" value="0" checked>アタック</label>
+<label><input type="radio" name="course" value="1">ディフェンス</label>
+<label><input type="radio" name="course" value="2">スピード</label>
+<label><input type="radio" name="course" value="3">テクニック</label>
+<label><input type="radio" name="course" value="4">たいりょく</label>
+<label><input type="radio" name="course" value="5">ふしぎ</label>
+<label><input type="radio" name="course" value="6">経験値</label>
+<label><input type="radio" name="course" value="7">スーパー経験値</label>
+<tr><td><td><input type="submit" value="決定"> <input type="button" name="delete_button" value="結果を消す">
+</table>
+</form>
+<div id="map-result"></div>
+
 <h2>使い方</h2>
 <ol>
 <li><a href="https://oupo.github.io/tools/inazuma3-drop.html">イナズマ3 アイテムドロップ乱数調整ツール</a>で初期seedと初期消費を調べる。</li>
@@ -47,10 +83,11 @@
 </ol>
 <h2>注意</h2>
 <p>
-現在対応中なのはスパーク・ボンバーのみです。ジ・オーガはデータさえ追加すれば対応できるはずなのでそのうちやります。
+ジ・オーガの経験値・スーパー経験値は場所が違うのでこのツールでは出来ません (選べるようにはなっていますが)。
 </p>
 <h2>更新履歴</h2>
 <ul>
+<li>2022/9/25 ジ・オーガに対応</li>
 <li>2022/9/25 公開</li>
 </ul>
 <p>
@@ -67,14 +104,12 @@
 <script>
 addEvent(window, "load", function() {
 	var search_form = document.forms.search_form;
+	addEvent(get_elem_by_tag_and_class(search_form, "td", "title-area"), "click", update_search_form_item_control);
 	addEvent(get_elem_by_tag_and_class(search_form, "td", "chapter-area"), "click", update_search_form_item_control);
 	addEvent(get_elem_by_tag_and_class(search_form, "td", "course-area"), "click", update_search_form_item_control);
 	update_search_form_item_control();
 	addEvent(search_form, "submit", submit_callback(on_submit_search));
-	addEvent(search_form.elements.delete_button, "click", function() {
-		clear_search();
-		document.getElementById("search-result").innerHTML = "";
-	});
+	addEvent(document.forms.map_form, "submit", submit_callback(on_submit_map));
 });
 
 function update_search_form_item_control() {
@@ -82,19 +117,26 @@ function update_search_form_item_control() {
 	var item_area = get_elem_by_tag_and_class(form, "td", "item-area");
 	
 	var f = form.elements;
+	var title = get_checked_radio_value(f.title);
+	var data = title == "spark_and_bomber" ? DUNGEON_DATA_SPARK_AND_BOMBER : DUNGEON_DATA_OGRE;
 	var chapter = Number(get_checked_radio_value(f.chapter));
 	var course = Number(get_checked_radio_value(f.course));
-	var data = fix_treasure_odd(DUNGEON_DATA[chapter][course].treasure);
-	
-	var buf = "";
-	for (var i = 0; i < data.length; i ++) {
-        var checked = i === 0 ? " checked" : "";
-        if (data[i].odd > 0) {
-            buf += '<label><input type="radio" name="expected_item" value="'+i+'"'+checked+'>'+data[i].item+' ('+data[i].odd+'%)</label><br>';
-        }
+
+	if (data[chapter][course]) {
+		data = fix_treasure_odd(data[chapter][course].treasure);
+		
+		var buf = "";
+		for (var i = 0; i < data.length; i ++) {
+			var checked = i === 0 ? " checked" : "";
+			if (data[i].odd > 0) {
+				buf += '<label><input type="radio" name="expected_item" value="'+i+'"'+checked+'>'+data[i].item+' ('+data[i].odd+'%)</label><br>';
+			}
+		}
+		
+		item_area.innerHTML = buf;
+	} else {
+		item_area.innerHTML = "ありません";
 	}
-	
-	item_area.innerHTML = buf;
 }
 
 // ゲームでの確率判定に合わせてデータ上での確率から真の確率に修正する
@@ -113,11 +155,13 @@ function on_submit_search(form) {
 	var fseed = read_input(f.fseed, "初期seed");
 	var advancement = read_input(f.advancement, "消費");
 	var frame_length = read_input(f.frame_length, "フレームの長さ");
+	var title = get_checked_radio_value(f.title);
 	var chapter = Number(get_checked_radio_value(f.chapter));
 	var course = Number(get_checked_radio_value(f.course));
 	var item_index = Number(get_checked_radio_value(f.expected_item));
 	var result_area = document.getElementById("search-result");
-	var data = DUNGEON_DATA[chapter][course];
+	var data = title == "spark_and_bomber" ? DUNGEON_DATA_SPARK_AND_BOMBER : DUNGEON_DATA_OGRE;
+    data = data[chapter][course];
     
 	var judge = new TreasureJudge(data, item_index);
 	
@@ -136,6 +180,40 @@ function on_submit_search(form) {
         div.appendChild(canvas);
         result_area.appendChild(div);
     }
+}
+
+function on_submit_map(form) {
+	var f = form.elements;
+	var fseed = read_input(f.fseed, "初期seed");
+	var advancement = read_input(f.advancement, "消費");
+	var title = get_checked_radio_value(f.title);
+	var chapter = Number(get_checked_radio_value(f.chapter));
+	var course = Number(get_checked_radio_value(f.course));
+	var result_area = document.getElementById("map-result");
+	result_area.innerHTML = "";
+	
+	var prng = new PRNG(0, fseed);
+	prng.step(advancement);
+	
+	var data = title == "spark_and_bomber" ? DUNGEON_DATA_SPARK_AND_BOMBER : DUNGEON_DATA_OGRE;
+	data = data[chapter][course];
+
+	
+	var generator = new MapGenerator(data.width, data.height, data.dist, data.num_rooms, data.num_enemy_rooms);
+	var result = generator.generate(prng);
+	result_area.appendChild(gen_map_image(result.map, data.width, data.height));
+	
+	append_treasure_item_result(result_area, prng, result, data.treasure);
+}
+
+function append_treasure_item_result(area, prng, result, treasure_data) {
+	var num = calc_treasure_num(result.map, result.coords);
+	if (num === 0) return;
+	var items = [];
+	for (var i = 0; i < num; i ++) {
+		items.push(determine_treasure_item(prng, treasure_data));
+	}
+	area.appendChild(document.createTextNode("宝箱: "+items.join(", ")));
 }
 
 </script>
