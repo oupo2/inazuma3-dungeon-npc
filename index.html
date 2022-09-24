@@ -117,7 +117,7 @@ function on_submit_search(form) {
 	var course = Number(get_checked_radio_value(f.course));
 	var item_index = Number(get_checked_radio_value(f.expected_item));
 	var result_area = document.getElementById("search-result");
-    var data = DUNGEON_DATA[chapter][course];
+	var data = DUNGEON_DATA[chapter][course];
     
 	var judge = new TreasureJudge(data, item_index);
 	
