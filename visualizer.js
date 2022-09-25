@@ -68,11 +68,13 @@ function visualize(prng, frame_length, judge) {
                     ctx.fillRect(10, 10 + frame * HEIGHT_PER_FRAME, 400, event.len * HEIGHT_PER_FRAME);
                     ctx.font = "bold 10px sans-serif";
                     ctx.fillStyle = "red";
+                    ctx.fillText("消費: "+event.advance, 10, 10 + frame * HEIGHT_PER_FRAME);
+                    ctx.fillText("フレーム: "+event.frame, 10, 10 + frame * HEIGHT_PER_FRAME + 10);
                 } else {
                     ctx.font = "10px sans-serif";
                     ctx.fillStyle = "black";
+                    ctx.fillText("消費: "+event.advance, 10, 10 + frame * HEIGHT_PER_FRAME);
                 }
-                ctx.fillText("消費: "+event.advance, 10, 10 + frame * HEIGHT_PER_FRAME);
                 break;
             case "walk":
                 ctx.fillStyle = "#a6e9e2";
